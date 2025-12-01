@@ -90,8 +90,16 @@
 
 <!-- Search Overlay -->
 {#if showSearch}
-  <div class="search-overlay" on:click={closeSearch}>
-    <div class="search-container" on:click|stopPropagation>
+  <div
+    class="search-overlay"
+    on:click={(e) => {
+      if (e.target === e.currentTarget) closeSearch();
+    }}
+    on:keydown={(e) => e.key === "Escape" && closeSearch()}
+    role="button"
+    tabindex="0"
+  >
+    <div class="search-container" role="document">
       <div class="search-header">
         <Search size={20} />
         <input

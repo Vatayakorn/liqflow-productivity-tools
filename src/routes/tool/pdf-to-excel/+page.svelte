@@ -71,6 +71,12 @@
     function toggleFaq(index) {
         openFaqIndex = openFaqIndex === index ? null : index;
     }
+
+    function reset() {
+        files = [];
+        downloadUrl = null;
+        status = "upload";
+    }
 </script>
 
 <div class="tool-page">
@@ -290,12 +296,12 @@
     }
 
     /* FAQ Section */
-    .faq {
+    .faq-section {
         padding: 60px 0;
         background: #f5f5f5;
     }
 
-    .faq h2 {
+    .faq-section h2 {
         font-size: 28px;
         font-weight: 700;
         text-align: center;
