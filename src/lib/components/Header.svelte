@@ -1,10 +1,11 @@
 <script>
   import { Menu, Search, X } from "lucide-svelte";
-  
+  import { page } from "$app/stores";
+
   let showSearch = false;
   let searchQuery = "";
   let searchResults = [];
-  
+
   // All available tools for search
   const allTools = [
     { title: "PDF to Word", href: "/tool/pdf-to-word", category: "Convert" },
@@ -21,11 +22,15 @@
     { title: "Rotate PDF", href: "/tool/rotate-pdf", category: "Edit" },
     { title: "Delete Pages", href: "/tool/delete-pages", category: "Edit" },
     { title: "Fill & Sign", href: "/tool/fill-and-sign", category: "Sign" },
-    { title: "Request e-signatures", href: "/tool/request-signature", category: "Sign" },
+    {
+      title: "Request e-signatures",
+      href: "/tool/request-signature",
+      category: "Sign",
+    },
     { title: "Protect PDF", href: "/tool/protect-pdf", category: "Protect" },
     { title: "Edit PDF", href: "/tool/edit-pdf", category: "Edit" },
   ];
-  
+
   function toggleSearch() {
     showSearch = !showSearch;
     if (showSearch) {
@@ -33,24 +38,25 @@
       searchResults = [];
       // Focus on search input after animation
       setTimeout(() => {
-        document.getElementById('search-input')?.focus();
+        document.getElementById("search-input")?.focus();
       }, 100);
     }
   }
-  
+
   function handleSearch() {
     if (searchQuery.trim() === "") {
       searchResults = [];
       return;
     }
-    
+
     const query = searchQuery.toLowerCase();
-    searchResults = allTools.filter(tool => 
-      tool.title.toLowerCase().includes(query) || 
-      tool.category.toLowerCase().includes(query)
+    searchResults = allTools.filter(
+      (tool) =>
+        tool.title.toLowerCase().includes(query) ||
+        tool.category.toLowerCase().includes(query),
     );
   }
-  
+
   function closeSearch() {
     showSearch = false;
     searchQuery = "";
@@ -65,8 +71,12 @@
       <span>Liqflow</span>
     </div>
     <nav>
-      <a href="/" class="active">Home</a>
-      <a href="/tools">Tools</a>
+      <a href="/" class:active={$page.url.pathname === "/"}>Home</a>
+      <a
+        href="/tools"
+        class:active={$page.url.pathname.startsWith("/tools") ||
+          $page.url.pathname.startsWith("/tool/")}>Tools</a
+      >
     </nav>
   </div>
 
@@ -95,16 +105,36 @@
           <X size={20} />
         </button>
       </div>
-      
+
       <div class="search-results">
         {#if searchQuery.trim() === ""}
           <div class="search-hint">
             <p>Try searching for:</p>
             <div class="search-suggestions">
-              <button on:click={() => { searchQuery = "PDF"; handleSearch(); }}>PDF</button>
-              <button on:click={() => { searchQuery = "Convert"; handleSearch(); }}>Convert</button>
-              <button on:click={() => { searchQuery = "Merge"; handleSearch(); }}>Merge</button>
-              <button on:click={() => { searchQuery = "Compress"; handleSearch(); }}>Compress</button>
+              <button
+                on:click={() => {
+                  searchQuery = "PDF";
+                  handleSearch();
+                }}>PDF</button
+              >
+              <button
+                on:click={() => {
+                  searchQuery = "Convert";
+                  handleSearch();
+                }}>Convert</button
+              >
+              <button
+                on:click={() => {
+                  searchQuery = "Merge";
+                  handleSearch();
+                }}>Merge</button
+              >
+              <button
+                on:click={() => {
+                  searchQuery = "Compress";
+                  handleSearch();
+                }}>Compress</button
+              >
             </div>
           </div>
         {:else if searchResults.length === 0}
@@ -228,8 +258,12 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .search-container {
