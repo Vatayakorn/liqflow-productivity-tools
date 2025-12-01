@@ -1,0 +1,28 @@
+:root {
+  --accent-color: #40E0D0;
+  --bg-color: #F5F5F5;
+  --bg-white: #FFFFFF;
+  --text-primary: #2C2C2C;
+  --text-secondary: #707070;
+  --border-color: #E1E1E1;
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --header-height: 64px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+* {
+  box-sizing: border-box;
+}

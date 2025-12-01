@@ -1,0 +1,166 @@
+<script>
+    import FileUploader from "$lib/components/FileUploader.svelte";
+    import { rotatePdf } from "$lib/utils/pdf";
+    import { Loader2, RotateCw, Download, FileText } from "lucide-svelte";
+
+    let files = [];
+    let rotatedUrl = null;
+    let isProcessing = false;
+    let status = "upload"; // upload, processing, success
+
+    function handleFilesSelected(event) {
+        files = event.detail;
+        if (files.length > 0) {
+            processRotate();
+        }
+    }
+
+    async function processRotate() {
+        status = "processing";
+        isProcessing = true;
+        try {
+            const blob = await rotatePdf(files[0], 90);
+            rotatedUrl = URL.createObjectURL(blob);
+            status = "success";
+        } catch (error) {
+            console.error(error);
+            alert("Failed to rotate PDF");
+            status = "upload";
+        } finally {
+            isProcessing = false;
+        }
+    }
+
+    function downloadFile() {
+        const a = document.createElement("a");
+        a.href = rotatedUrl;
+        a.download = `rotated-${files[0].name}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function reset() {
+        files = [];
+        rotatedUrl = null;
+        status = "upload";
+    }
+</script>
+
+<div class="tool-page">
+    {#if status === "upload"}
+        <div class="container">
+            <div class="header">
+                <h1>Rotate PDF</h1>
+                <p>Rotate all pages in your PDF by 90 degrees.</p>
+            </div>
+            <FileUploader
+                on:filesSelected={handleFilesSelected}
+                acceptedFileTypes=".pdf"
+            />
+        </div>
+    {:else if status === "processing"}
+        <div class="container centered">
+            <Loader2 size={48} class="spin" color="#40E0D0" />
+            <h2>Rotating PDF...</h2>
+        </div>
+    {:else if status === "success"}
+        <div class="container centered">
+            <div class="success-icon">
+                <RotateCw size={64} color="#008000" />
+            </div>
+            <h2>Your PDF is ready!</h2>
+            <p>Download the rotated file below.</p>
+
+            <button class="download-btn" on:click={downloadFile}>
+                <Download size={20} />
+                Download PDF
+            </button>
+
+            <button class="link-btn" on:click={reset}>Rotate another PDF</button>
+        </div>
+    {/if}
+</div>
+
+<style>
+    .tool-page {
+        min-height: calc(100vh - var(--header-height));
+        background: var(--bg-color);
+        padding: 60px 24px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .container {
+        max-width: 800px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .centered {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 400px;
+        gap: 16px;
+    }
+
+    .header {
+        margin-bottom: 40px;
+    }
+
+    h1 {
+        font-size: 40px;
+        font-weight: 800;
+        margin: 0 0 16px;
+    }
+
+    p {
+        font-size: 18px;
+        color: var(--text-secondary);
+    }
+
+    :global(.spin) {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .download-btn {
+        background: var(--accent-color);
+        color: white;
+        border: none;
+        padding: 14px 32px;
+        border-radius: 24px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 24px;
+        transition: background 0.2s;
+    }
+
+    .download-btn:hover {
+        background: #36C0B3;
+    }
+
+    .link-btn {
+        background: none;
+        border: none;
+        color: #0265dc;
+        font-weight: 600;
+        margin-top: 16px;
+        cursor: pointer;
+        text-decoration: underline;
+    }
+</style>
