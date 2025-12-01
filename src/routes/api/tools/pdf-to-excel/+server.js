@@ -2,8 +2,22 @@ import { json } from '@sveltejs/kit';
 import ExcelJS from 'exceljs';
 import PDFParser from 'pdf2json';
 
-const Y_TOLERANCE = 0.8;
-const X_TOLERANCE = 0.6;
+const MIN_Y_TOL = 0.5;
+const MIN_X_TOL = 0.35;
+
+function medianDelta(values) {
+	const sorted = [...values].sort((a, b) => a - b);
+	const deltas = [];
+	for (let i = 1; i < sorted.length; i++) {
+		deltas.push(sorted[i] - sorted[i - 1]);
+	}
+	if (deltas.length === 0) return 0;
+	deltas.sort((a, b) => a - b);
+	const mid = Math.floor(deltas.length / 2);
+	return deltas.length % 2 === 0
+		? (deltas[mid - 1] + deltas[mid]) / 2
+		: deltas[mid];
+}
 
 function decodeText(raw) {
 	try {
@@ -53,6 +67,9 @@ function pageToRows(page) {
 
 	if (items.length === 0) return [];
 
+	const rowTol = Math.max(MIN_Y_TOL, medianDelta(items.map((i) => i.y)) * 0.6 || MIN_Y_TOL);
+	const xTol = Math.max(MIN_X_TOL, medianDelta(items.map((i) => i.x)) * 0.5 || MIN_X_TOL);
+
 	// Group into rows by Y
 	items.sort((a, b) => a.y - b.y || a.x - b.x);
 	/** @type {Array<typeof items>} */
@@ -61,7 +78,7 @@ function pageToRows(page) {
 	let currentY = null;
 
 	for (const item of items) {
-		if (currentY === null || Math.abs(item.y - currentY) < Y_TOLERANCE) {
+		if (currentY === null || Math.abs(item.y - currentY) < rowTol) {
 			current.push(item);
 			if (currentY === null) currentY = item.y;
 		} else {
@@ -73,7 +90,7 @@ function pageToRows(page) {
 	if (current.length) rowGroups.push(current);
 
 	// Cluster X positions per page to align columns
-	const xClusters = clusterPositions(items.map((i) => i.x), X_TOLERANCE);
+	const xClusters = clusterPositions(items.map((i) => i.x), xTol);
 
 	// Build rows
 	const rows = rowGroups.map((group) => {
@@ -95,7 +112,8 @@ function pageToRows(page) {
 			const colIndex = bestIndex;
 			while (rowData.length <= colIndex) rowData.push(null);
 			if (rowData[colIndex]) {
-				rowData[colIndex] += ' ' + item.content;
+				// Append with a space to keep words readable
+				rowData[colIndex] = `${rowData[colIndex]} ${item.content}`.trim();
 			} else {
 				rowData[colIndex] = item.content;
 			}
@@ -152,7 +170,7 @@ export async function POST({ request }) {
 					const current = result.xClusters[i];
 					const next = result.xClusters[i + 1];
 					const spacing = next ? Math.max(2, next.avg - current.avg) : 10;
-					const excelWidth = Math.max(8, Math.min(80, Math.round(spacing * 1.5)));
+					const excelWidth = Math.max(10, Math.min(60, Math.round(spacing * 1.6)));
 					widths.push({ width: excelWidth });
 				}
 				sheet.columns = widths;

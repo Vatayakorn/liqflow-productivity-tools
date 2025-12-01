@@ -11,6 +11,7 @@
         Trash2,
         PenTool,
         Lock,
+        Unlock,
     } from "lucide-svelte";
 
     const tools = [
@@ -132,6 +133,18 @@
                     description: "Add a protection watermark to your PDF.",
                     icon: Lock,
                     href: "/tool/protect-pdf",
+                },
+                {
+                    title: "Encrypt PDF",
+                    description: "Secure your PDF with a password.",
+                    icon: Lock,
+                    href: "/tool/encrypt-pdf",
+                },
+                {
+                    title: "Unlock PDF",
+                    description: "Remove password protection from your PDF.",
+                    icon: Unlock,
+                    href: "/tool/unlock-pdf",
                 },
             ],
         },

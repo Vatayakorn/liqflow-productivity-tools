@@ -1,12 +1,14 @@
-import adapter from '@sveltejs/adapter-auto';
+import adapter from '@sveltejs/adapter-vercel';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-		// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
-		adapter: adapter()
+		adapter: adapter({
+			// Vercel adapter options
+			runtime: 'nodejs20.x',
+			regions: ['sin1'], // Singapore region for better performance in Asia
+			maxDuration: 60 // Max function duration in seconds
+		})
 	}
 };
 
