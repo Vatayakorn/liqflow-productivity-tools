@@ -105,7 +105,6 @@
     <button class="icon-btn" on:click={toggleSearch} aria-label="Search tools">
       <Search size={20} />
     </button>
-    <button class="sign-in">Sign In</button>
   </div>
 </header>
 
@@ -207,14 +206,14 @@
   .logo {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     font-weight: 700;
-    font-size: 18px;
+    font-size: 24px;
     color: var(--accent-color);
   }
 
   .logo img {
-    height: 24px;
+    height: 32px;
   }
 
   nav {
@@ -251,21 +250,6 @@
   }
 
   .icon-btn:hover {
-    background-color: var(--bg-color);
-  }
-
-  .sign-in {
-    background: transparent;
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .sign-in:hover {
     background-color: var(--bg-color);
   }
 

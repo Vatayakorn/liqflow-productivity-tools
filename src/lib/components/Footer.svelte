@@ -1,11 +1,6 @@
 <footer>
   <div class="content">
     <p>© 2025 Liqflow. All rights reserved.</p>
-    <div class="links">
-      <a href="/privacy">Privacy</a>
-      <a href="/terms">Terms of Use</a>
-      <a href="/cookies">Cookie preferences</a>
-    </div>
   </div>
 </footer>
 
@@ -24,14 +19,5 @@
     justify-content: space-between;
     font-size: 12px;
     color: var(--text-secondary);
-  }
-
-  .links {
-    display: flex;
-    gap: 24px;
-  }
-
-  a:hover {
-    text-decoration: underline;
   }
 </style>
