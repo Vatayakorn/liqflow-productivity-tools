@@ -62,6 +62,27 @@
     searchQuery = "";
     searchResults = [];
   }
+
+  function handleOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeSearch();
+    }
+  }
+
+  function handleOverlayKeydown(event) {
+    if (event.key === "Escape") {
+      closeSearch();
+      return;
+    }
+
+    if (
+      (event.key === "Enter" || event.key === " ") &&
+      event.target === event.currentTarget
+    ) {
+      event.preventDefault();
+      closeSearch();
+    }
+  }
 </script>
 
 <header>
@@ -92,11 +113,10 @@
 {#if showSearch}
   <div
     class="search-overlay"
-    on:click={(e) => {
-      if (e.target === e.currentTarget) closeSearch();
-    }}
-    on:keydown={(e) => e.key === "Escape" && closeSearch()}
+    on:click={handleOverlayClick}
+    on:keydown={handleOverlayKeydown}
     role="button"
+    aria-label="Close search overlay"
     tabindex="0"
   >
     <div class="search-container" role="document">

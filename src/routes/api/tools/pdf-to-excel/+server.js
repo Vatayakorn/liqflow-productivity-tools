@@ -1,9 +1,18 @@
 import { json } from '@sveltejs/kit';
 import ExcelJS from 'exceljs';
-import PDFParser from 'pdf2json';
 
 const MIN_Y_TOL = 0.5;
 const MIN_X_TOL = 0.35;
+
+let pdfParserModule;
+
+async function getPdfParser() {
+	if (!pdfParserModule) {
+		const mod = await import('pdf2json');
+		pdfParserModule = mod.default || mod;
+	}
+	return pdfParserModule;
+}
 
 function medianDelta(values) {
 	const sorted = [...values].sort((a, b) => a - b);
@@ -128,6 +137,14 @@ function pageToRows(page) {
 /** @type {import('./$types').RequestHandler} */
 export async function POST({ request }) {
 	try {
+		let PDFParser;
+		try {
+			PDFParser = await getPdfParser();
+		} catch (parserError) {
+			console.error('Failed to load pdf2json:', parserError);
+			return json({ error: 'PDF parser is not available on the server' }, { status: 500 });
+		}
+
 		const formData = await request.formData();
 		const file = formData.get('file');
 

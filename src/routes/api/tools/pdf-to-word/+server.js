@@ -1,12 +1,10 @@
 import { json } from '@sveltejs/kit';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
-import * as pdfParseMod from 'pdf-parse';
-
-// @ts-ignore - pdf-parse has different export formats
-const pdfParse = pdfParseMod.default || pdfParseMod;
+import { PDFParse } from 'pdf-parse';
 
 /** @type {import('./$types').RequestHandler} */
 export async function POST({ request }) {
+    let parser;
     try {
         const formData = await request.formData();
         const file = formData.get('file');
@@ -20,16 +18,18 @@ export async function POST({ request }) {
         const buffer = Buffer.from(arrayBuffer);
 
         // Parse PDF to extract text
-        let pdfData;
+        let textResult;
         try {
-            pdfData = await pdfParse(buffer);
+            parser = new PDFParse({ data: buffer });
+            textResult = await parser.getText();
         } catch (parseError) {
             console.error('PDF parse error:', parseError);
             return json({ error: 'Failed to parse PDF file' }, { status: 400 });
         }
 
         // Extract text content
-        const text = pdfData.text || '';
+        const text = textResult?.text || '';
+        const totalPages = textResult?.total || 0;
         const lines = text.split('\n').filter((/** @type {string} */ line) => line.trim().length > 0);
 
         // Create paragraphs from extracted text
@@ -133,7 +133,7 @@ export async function POST({ request }) {
             new Paragraph({
                 children: [
                     new TextRun({
-                        text: `Pages: ${pdfData.numpages || 'Unknown'}`,
+                        text: `Pages: ${totalPages || 'Unknown'}`,
                         size: 20,
                     }),
                 ],
@@ -161,5 +161,9 @@ export async function POST({ request }) {
     } catch (error) {
         console.error('Conversion error:', error);
         return json({ error: 'Failed to convert PDF to Word' }, { status: 500 });
+    } finally {
+        if (parser?.destroy) {
+            await parser.destroy();
+        }
     }
 }
