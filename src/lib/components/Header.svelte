@@ -88,7 +88,7 @@
 <header>
   <div class="left">
     <div class="logo">
-      <img src="/liqflow-logo.png" alt="Liqflow" />
+      <img src="/logo.png" alt="Liqflow" />
       <span>Liqflow</span>
     </div>
     <nav>
@@ -213,7 +213,7 @@
   }
 
   .logo img {
-    height: 32px;
+    height: 56px;
   }
 
   nav {
