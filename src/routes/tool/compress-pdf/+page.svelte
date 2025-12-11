@@ -1,4 +1,6 @@
 <script>
+    import { onMount } from "svelte";
+    import { browser } from "$app/environment";
     import FileUploader from "$lib/components/FileUploader.svelte";
     import {
         FileText,
@@ -6,13 +8,51 @@
         Loader2,
         CheckCircle,
         Minimize2,
+        Settings,
     } from "lucide-svelte";
+    import { PDFDocument } from "pdf-lib";
+
+    let pdfjsLib = null;
 
     let file = null;
     let isProcessing = false;
     let compressedPdfUrl = null;
     let originalSize = 0;
     let compressedSize = 0;
+    let progress = 0;
+    let progressStatus = "";
+    let compressionLevel = "medium"; // low, medium, high
+
+    // Dynamically import pdfjs-dist on client side only
+    onMount(async () => {
+        if (browser) {
+            const pdfjs = await import("pdfjs-dist");
+            const pdfWorker = await import(
+                "pdfjs-dist/build/pdf.worker.mjs?url"
+            );
+            pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker.default;
+            pdfjsLib = pdfjs;
+        }
+    });
+
+    // Compression settings based on level
+    const compressionSettings = {
+        low: {
+            scale: 1.5,
+            quality: 0.85,
+            description: "Light compression, best quality",
+        },
+        medium: {
+            scale: 1.2,
+            quality: 0.65,
+            description: "Balanced compression",
+        },
+        high: {
+            scale: 1.0,
+            quality: 0.45,
+            description: "Maximum compression, smaller size",
+        },
+    };
 
     function handleFilesSelected(event) {
         const files = event.detail;
@@ -24,22 +64,82 @@
 
     async function handleCompress() {
         if (!file) return;
+        if (!pdfjsLib) {
+            alert("PDF library is still loading. Please try again.");
+            return;
+        }
 
         isProcessing = true;
-        try {
-            const formData = new FormData();
-            formData.append("file", file);
+        progress = 0;
+        progressStatus = "Loading PDF...";
 
-            const response = await fetch("/api/tools/compress", {
-                method: "POST",
-                body: formData,
+        try {
+            const settings = compressionSettings[compressionLevel];
+            const arrayBuffer = await file.arrayBuffer();
+
+            // Load PDF with pdfjs-dist for rendering
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer })
+                .promise;
+            const numPages = pdf.numPages;
+
+            // Create new PDF with pdf-lib
+            const newPdf = await PDFDocument.create();
+
+            for (let i = 1; i <= numPages; i++) {
+                progressStatus = `Compressing page ${i} of ${numPages}...`;
+                progress = Math.round((i / numPages) * 90);
+
+                // Render page to canvas
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: settings.scale });
+
+                const canvas = document.createElement("canvas");
+                const context = canvas.getContext("2d");
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport,
+                }).promise;
+
+                // Convert canvas to JPEG with compression
+                const jpegDataUrl = canvas.toDataURL(
+                    "image/jpeg",
+                    settings.quality,
+                );
+                const jpegBytes = await fetch(jpegDataUrl).then((r) =>
+                    r.arrayBuffer(),
+                );
+
+                // Embed JPEG into new PDF
+                const jpegImage = await newPdf.embedJpg(jpegBytes);
+                const newPage = newPdf.addPage([
+                    jpegImage.width,
+                    jpegImage.height,
+                ]);
+                newPage.drawImage(jpegImage, {
+                    x: 0,
+                    y: 0,
+                    width: jpegImage.width,
+                    height: jpegImage.height,
+                });
+            }
+
+            progressStatus = "Finalizing...";
+            progress = 95;
+
+            // Save compressed PDF
+            const compressedBytes = await newPdf.save();
+            const blob = new Blob([compressedBytes], {
+                type: "application/pdf",
             });
 
-            if (!response.ok) throw new Error("Compression failed");
-
-            const blob = await response.blob();
             compressedSize = blob.size;
             compressedPdfUrl = URL.createObjectURL(blob);
+
+            progress = 100;
+            progressStatus = "Done!";
         } catch (error) {
             console.error(error);
             alert(
@@ -53,7 +153,9 @@
     function downloadCompressed() {
         const a = document.createElement("a");
         a.href = compressedPdfUrl;
-        a.download = `compressed-${file.name}`;
+        // Ensure the filename ends with .pdf
+        const baseName = file.name.replace(/\.pdf$/i, "");
+        a.download = `compressed-${baseName}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -64,6 +166,8 @@
         compressedPdfUrl = null;
         originalSize = 0;
         compressedSize = 0;
+        progress = 0;
+        progressStatus = "";
     }
 
     function formatSize(bytes) {
@@ -72,6 +176,13 @@
         const sizes = ["B", "KB", "MB", "GB"];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    }
+
+    function getReductionPercent() {
+        if (originalSize === 0) return 0;
+        return Math.round(
+            ((originalSize - compressedSize) / originalSize) * 100,
+        );
     }
 </script>
 
@@ -123,6 +234,18 @@
                 >Compress another file</button
             >
         </div>
+    {:else if isProcessing}
+        <div class="container centered">
+            <div class="loader">
+                <Loader2 size={48} class="spin" color="#40E0D0" />
+            </div>
+            <h2>Compressing PDF...</h2>
+            <p class="progress-status">{progressStatus}</p>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {progress}%"></div>
+            </div>
+            <p class="progress-text">{progress}%</p>
+        </div>
     {:else}
         <div class="container centered">
             <div class="file-preview">
@@ -131,16 +254,42 @@
                 <p class="filesize">{formatSize(file.size)}</p>
             </div>
 
+            <div class="compression-options">
+                <h3><Settings size={18} /> Compression Level</h3>
+                <div class="level-buttons">
+                    <button
+                        class="level-btn"
+                        class:active={compressionLevel === "low"}
+                        on:click={() => (compressionLevel = "low")}
+                    >
+                        <span class="level-name">Low</span>
+                        <span class="level-desc">Best quality</span>
+                    </button>
+                    <button
+                        class="level-btn"
+                        class:active={compressionLevel === "medium"}
+                        on:click={() => (compressionLevel = "medium")}
+                    >
+                        <span class="level-name">Medium</span>
+                        <span class="level-desc">Balanced</span>
+                    </button>
+                    <button
+                        class="level-btn"
+                        class:active={compressionLevel === "high"}
+                        on:click={() => (compressionLevel = "high")}
+                    >
+                        <span class="level-name">High</span>
+                        <span class="level-desc">Smallest size</span>
+                    </button>
+                </div>
+            </div>
+
             <button
                 class="compress-btn"
                 on:click={handleCompress}
                 disabled={isProcessing}
             >
-                {#if isProcessing}
-                    <Loader2 size={20} class="spin" /> Compressing...
-                {:else}
-                    <Minimize2 size={20} /> Compress PDF
-                {/if}
+                <Minimize2 size={20} /> Compress PDF
             </button>
 
             <button class="link-btn" on:click={() => (file = null)}
@@ -322,5 +471,100 @@
         to {
             transform: rotate(360deg);
         }
+    }
+
+    /* Compression Options */
+    .compression-options {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .compression-options h3 {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin: 0 0 16px;
+        font-size: 16px;
+        color: var(--text-primary);
+    }
+
+    .level-buttons {
+        display: flex;
+        gap: 12px;
+    }
+
+    .level-btn {
+        flex: 1;
+        background: #f5f5f5;
+        border: 2px solid transparent;
+        padding: 16px 12px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .level-btn:hover {
+        background: #eee;
+    }
+
+    .level-btn.active {
+        background: rgba(64, 224, 208, 0.1);
+        border-color: var(--accent-color);
+    }
+
+    .level-name {
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--text-primary);
+    }
+
+    .level-desc {
+        font-size: 11px;
+        color: var(--text-secondary);
+    }
+
+    /* Progress Bar */
+    .progress-bar {
+        width: 100%;
+        max-width: 400px;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 16px 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #40e0d0, #36c0b3);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .progress-status {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    .progress-text {
+        margin: 0;
+        font-weight: 700;
+        color: var(--accent-color);
+        font-size: 18px;
+    }
+
+    .loader {
+        margin-bottom: 16px;
     }
 </style>
